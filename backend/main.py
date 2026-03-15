@@ -28,6 +28,7 @@
 #         "response": response.choices[0].message.content
 #     }
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq, GroqError
 import os
@@ -39,7 +40,19 @@ load_dotenv(dotenv_path=dotenv_path)
 
 # Initialize FastAPI
 app = FastAPI()
+origins = [
+    "http://localhost:5173",  # your frontend URL
+    "http://127.0.0.1:3000",
+    # add more origins if needed
+]
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],   # allow POST, OPTIONS, etc.
+    allow_headers=["*"],
+)
 # Get API key from environment variables
 api_key = os.getenv("GROQ_API_KEY")
 if not api_key:
@@ -59,7 +72,7 @@ async def ask_ai(query: Query):
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
-                {"role": "system", "content": "You are VoxAgent, a helpful multilingual voice assistant."},
+                {"role": "system", "content": "You are VoxAgent, a helpful multilingual voice assistant. reply only in english."},
                 {"role": "user", "content": query.message}
             ]
         )
