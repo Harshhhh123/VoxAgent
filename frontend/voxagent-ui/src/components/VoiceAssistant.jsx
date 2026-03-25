@@ -290,7 +290,8 @@ export default function VoiceAssistant() {
   const [statusColor, setStatusColor] = useState("#22c55e");
   const [stateText, setStateText] = useState("—");
 
-  const recognitionRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
   useEffect(() => {
     const styleEl = document.createElement("style");
@@ -299,28 +300,71 @@ export default function VoiceAssistant() {
     return () => document.head.removeChild(styleEl);
   }, []);
 
-  const finalTranscriptRef = useRef("");
-  const manualStopRef = useRef(false);
+  // =========================
+  // 🎤 START RECORDING
+  // =========================
+  const startRecording = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-  const sendTranscript = async (transcript) => {
-    if (!transcript.trim()) return;
-    setThinking(true);
-    setStatusLabel("Thinking");
-    setStatusColor("#a78bfa");
-    setStateText("Processing…");
+    const mediaRecorder = new MediaRecorder(stream);
+    mediaRecorderRef.current = mediaRecorder;
 
+    audioChunksRef.current = [];
+
+    mediaRecorder.ondataavailable = (event) => {
+      audioChunksRef.current.push(event.data);
+    };
+
+    mediaRecorder.start();
+  };
+
+  // =========================
+  // 🛑 STOP RECORDING
+  // =========================
+  const stopRecording = async () => {
+    return new Promise((resolve) => {
+      const mediaRecorder = mediaRecorderRef.current;
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, {
+  type: "audio/webm",
+});
+        resolve(audioBlob);
+      };
+
+      mediaRecorder.stop();
+    });
+  };
+
+  // =========================
+  // 🚀 SEND AUDIO TO BACKEND
+  // =========================
+  const sendAudio = async (audioBlob) => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/ask", {
+      setThinking(true);
+      setStatusLabel("Thinking");
+      setStatusColor("#a78bfa");
+
+      const formData = new FormData();
+      formData.append("file", audioBlob, "audio.wav");
+
+      const res = await fetch("http://127.0.0.1:8000/voice", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: transcript }),
+        body: formData,
       });
-      const data = await response.json();
+
+      const data = await res.json();
+
+      setUserText(data.transcript);
       setAiText(data.response);
-      speak(data.response);
       setTurns((t) => t + 1);
-    } catch {
-      setAiText("Could not reach the server.");
+
+      // 🔊 Play AI voice
+      const audio = new Audio("data:audio/wav;base64," + data.audio);
+      audio.play();
+
+    } catch (err) {
+      setAiText("Error connecting to server");
     }
 
     setThinking(false);
@@ -329,88 +373,26 @@ export default function VoiceAssistant() {
     setStateText("—");
   };
 
-  useEffect(() => {
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    const rec = new SpeechRecognition();
-    rec.lang = "en-US";
-    rec.continuous = true;        // keep listening through pauses
-    rec.interimResults = true;    // show live partial transcript
-
-    rec.onresult = (event) => {
-      let interim = "";
-      let final = "";
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        if (result.isFinal) {
-          final += result[0].transcript;
-        } else {
-          interim += result[0].transcript;
-        }
-      }
-
-      if (final) {
-        finalTranscriptRef.current += " " + final;
-      }
-
-      // Show live text: confirmed final + current interim
-      setUserText((finalTranscriptRef.current + " " + interim).trim());
-    };
-
-    rec.onerror = (e) => {
-      // "no-speech" is not a real error — just silence, ignore it
-      if (e.error === "no-speech") return;
-      setListening(false);
-      setStatusLabel("Ready");
-      setStatusColor("#22c55e");
-      setStateText("Error — try again");
-    };
-
-    rec.onend = () => {
-      // If user clicked Stop, submit what was captured
-      if (manualStopRef.current) {
-        manualStopRef.current = false;
-        setListening(false);
-        const captured = finalTranscriptRef.current.trim();
-        if (captured) {
-          sendTranscript(captured);
-        } else {
-          setStatusLabel("Ready");
-          setStatusColor("#22c55e");
-          setStateText("Nothing captured — try again");
-        }
-      }
-    };
-
-    recognitionRef.current = rec;
-  }, []);
-
-  const toggleListen = () => {
-    const rec = recognitionRef.current;
-    if (!rec) return;
+  // =========================
+  // 🎤 TOGGLE LISTEN
+  // =========================
+  const toggleListen = async () => {
     if (listening) {
-      manualStopRef.current = true;
-      rec.stop();
-      setStateText("Processing…");
+      setListening(false);
+      setStateText("Processing...");
+
+      const audioBlob = await stopRecording();
+      sendAudio(audioBlob);
+
     } else {
-      finalTranscriptRef.current = "";
+      setListening(true);
       setUserText("");
       setAiText("");
-      setListening(true);
       setStatusLabel("Listening");
       setStatusColor("#f97316");
-      setStateText("Speak now — press Stop when done");
-      rec.start();
+      setStateText("Speak now...");
+      await startRecording();
     }
-  };
-
-  const speak = (text) => {
-    const speech = new SpeechSynthesisUtterance(text);
-    speech.lang = "en-US";
-    speechSynthesis.speak(speech);
   };
 
   const clearSession = () => {
@@ -421,7 +403,7 @@ export default function VoiceAssistant() {
   };
 
   const barClass = listening ? "vox-bar active" : "vox-bar idle";
-
+  
   return (
     <div className="vox-shell">
       <div className="vox-inner">

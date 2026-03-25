@@ -2,6 +2,7 @@ VoxAgent Support System Documentation
 
 Overview:
 VoxAgent is a multilingual AI-powered support assistant designed to help users with queries related to services, policies, and general support.
+Owner name: Palash
 
 Refund Policy:
 Customers are eligible to request a refund within 7 days of purchase. Refund requests made after 7 days will not be processed. To initiate a refund, users must contact the support team with valid purchase details.
