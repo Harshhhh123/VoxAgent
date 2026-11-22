@@ -57,7 +57,7 @@ async def ask_ai(query: Query):
 
         # ✅ Step 3: Send history + context
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             messages=[
                 {
                     "role": "system",
@@ -130,7 +130,7 @@ async def voice_ai(file: UploadFile = File(...)):
         })
 
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             messages=[
                 {
                     "role": "system",

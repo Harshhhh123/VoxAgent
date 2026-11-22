@@ -7,13 +7,13 @@ VoxAgent is an AI-powered voice and text assistant that leverages Retrieval-Augm
 - **Text & Voice Interactions**: Communicate via text or voice.
 - **RAG Integration**: Analyzes internal documents (`backend/docs`) to provide accurate, context-aware responses.
 - **Multilingual Support**: Real-time STT and translation for multiple regional languages to English and back.
-- **High-Performance AI**: Uses Groq (Llama 3.1 8B) for ultra-fast completions.
+- **High-Performance AI**: Uses Groq (GPT OSS 20B) for ultra-fast completions.
 - **Voice APIs**: Sarvam AI API integration for state-of-the-art regional voice synthesis and transcription.
 
 ## Tech Stack
 
 - **Backend**: FastAPI, Python
-- **AI/LLM**: Groq API (Llama 3.1 8B), LlamaIndex
+- **AI/LLM**: Groq API (GPT OSS 20B), LlamaIndex
 - **Embeddings**: BAAI/bge-small-en (via HuggingFace)
 - **Voice Processing**: Sarvam AI API
 - **Frontend**: React + Vite
@@ -65,7 +65,7 @@ VoxAgent/
 5. Place your reference documents (PDFs, TXT, etc.) into `backend/docs/`.
 6. Start the FastAPI backend:
    ```bash
-   uvicorn main:app --reload --port 8000
+   python -m uvicorn main:app --reload --port 8000
    ```
    > The index will be generated automatically the first time you run the app.
 
